@@ -54,7 +54,7 @@ assets/
 *.jsonl
 *.json
 !configs/*.yaml
-!configs/*.json
+# !configs/*.json
 
 # Logs
 *.log
