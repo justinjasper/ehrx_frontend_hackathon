@@ -240,6 +240,9 @@ const UploadTab = ({
           >
             {uploading ? "Uploading…" : "Upload & Process"}
           </button>
+          <p className="muted small-note">
+            Note: Uploads will take ~5 minutes.
+          </p>
 
           {!file && (
             <div className="card">
