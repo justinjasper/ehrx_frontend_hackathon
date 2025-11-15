@@ -11,7 +11,8 @@ Create `.env` in this directory:
 ```bash
 cp env.example .env
 ```
-Edit `VITE_API_BASE_URL` to point at the backend base URL (e.g., `https://ehrx-backend-xxxx.a.run.app` or `http://localhost:8080`).
+Edit `VITE_API_BASE_URL` to point at the backend base URL (e.g., `https://ehrx-backend-xxxx.a.run.app` or `http://localhost:8080`).  
+For Cloud Run deployments, the container now reads `API_BASE_URL` at runtime, so you can re-use the same image across environments without rebuilding.
 
 ## Install & Run (Local)
 ```bash
@@ -34,9 +35,7 @@ The included Dockerfile performs a multi-stage build and serves the static bundl
 1. **Build container**
 ```bash
 cd frontend
-docker build \
-  --build-arg VITE_API_BASE_URL=https://ehrx-backend-xxxx.a.run.app \
-  -t us-central1-docker.pkg.dev/$PROJECT_ID/ehrx-frontend/app .
+docker build -t us-central1-docker.pkg.dev/$PROJECT_ID/ehrx-frontend/app .
 docker push us-central1-docker.pkg.dev/$PROJECT_ID/ehrx-frontend/app
 ```
 
@@ -46,7 +45,8 @@ gcloud run deploy ehrx-frontend \
   --image us-central1-docker.pkg.dev/$PROJECT_ID/ehrx-frontend/app \
   --region us-central1 \
   --platform managed \
-  --allow-unauthenticated
+  --allow-unauthenticated \
+  --set-env-vars "API_BASE_URL=https://ehrx-backend-xxxx.a.run.app"
 ```
 
 3. **Configure CORS**

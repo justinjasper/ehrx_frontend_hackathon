@@ -4,12 +4,9 @@ import {
   QueryResponse,
   UploadResponse
 } from "./types";
+import { appConfig } from "./config";
 
-const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(
-    /\/$/,
-    ""
-  ) || "";
+const API_BASE_URL = appConfig.apiBaseUrl;
 
 const withBase = (path: string) => `${API_BASE_URL}${path}`;
 

@@ -23,9 +23,12 @@ WORKDIR /app
 
 RUN npm install -g serve
 COPY --from=build /app/dist ./dist
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-ENV PORT=8080
+ENV PORT=8080 \
+    API_BASE_URL=""
 EXPOSE 8080
 
-CMD ["sh", "-c", "serve -s dist -l $PORT"]
+ENTRYPOINT ["docker-entrypoint.sh"]
 
