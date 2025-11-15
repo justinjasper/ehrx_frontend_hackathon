@@ -9,7 +9,7 @@
 Stanford CS (AI) Master's Student
 
 **Xander Hnasko**
-Stanford CS (AI) Master's Student; prior experience in 
+Stanford CS (AI) Master's Student; prior experience in unstructured data ingestion within private financial markets. 
 
 ---
 
