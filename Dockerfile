@@ -4,10 +4,12 @@
 FROM node:20-alpine AS build
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
+# Copy frontend manifests
+COPY frontend/package*.json ./
 RUN npm install
 
-COPY . .
+# Copy frontend source
+COPY frontend/ .
 
 # Allow overriding backend URL via build arg
 ARG VITE_API_BASE_URL
@@ -23,7 +25,7 @@ WORKDIR /app
 
 RUN npm install -g serve
 COPY --from=build /app/dist ./dist
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY --from=build /app/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 ENV PORT=8080 \

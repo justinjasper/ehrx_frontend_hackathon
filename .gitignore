@@ -54,6 +54,8 @@ assets/
 *.jsonl
 *.json
 !configs/*.yaml
+!/frontend/package.json
+!/frontend/package-lock.json
 # !configs/*.json
 
 # Logs
