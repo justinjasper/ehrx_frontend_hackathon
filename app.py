@@ -67,16 +67,20 @@ def get_pipeline():
     return pipeline
 
 
-class ProcessRequest(BaseModel):
-    """Request model for PDF processing."""
-    page_range: Optional[str] = "all"
-    document_type: Optional[str] = "Clinical EHR"
-
-
-class QueryRequest(BaseModel):
+class QueryBody(BaseModel):
     """Request model for querying results."""
     question: str
-    document_id: str
+
+
+def _get_document_paths(document_id: str) -> dict:
+    """Return common file paths for a document."""
+    doc_dir = OUTPUT_DIR / document_id
+    return {
+        "dir": doc_dir,
+        "enhanced": doc_dir / f"{document_id}_enhanced.json",
+        "index": doc_dir / f"{document_id}_index.json",
+        "full": doc_dir / f"{document_id}_full.json"
+    }
 
 
 @app.get("/")
@@ -88,11 +92,12 @@ async def root():
         "status": "running",
         "endpoints": {
             "health": "/health",
-            "process": "/process (POST with PDF file)",
-            "query": "/query (POST with question)",
-            "results": "/results/{document_id}",
+            "upload": "/upload (POST)",
+            "ontology": "/documents/{id}/ontology (GET)",
+            "query": "/documents/{id}/query (POST)",
             "docs": "/docs"
-        }
+        },
+        "notes": "Upload PDFs directly to /upload using multipart/form-data"
     }
 
 
@@ -114,15 +119,15 @@ async def health_check():
         raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
 
 
-@app.post("/process")
-async def process_pdf(
+@app.post("/upload")
+async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     page_range: str = "all",
     document_type: str = "Clinical EHR"
 ):
     """
-    Process uploaded PDF through VLM extraction pipeline.
+    Upload and process a PDF through the VLM extraction pipeline.
     
     Args:
         file: PDF file to process
@@ -184,14 +189,14 @@ async def process_pdf(
         
         logger.info(f"Processing complete for document: {document_id}")
         
+        total_pages = document.get("total_pages") or document["processing_stats"].get("total_pages")
+        status = "complete"
+        
         return {
-            "status": "success",
             "document_id": document_id,
-            "processing_stats": document['processing_stats'],
-            "sub_documents": len(enhanced_doc.get('sub_documents', [])),
-            "results_url": f"/results/{document_id}",
-            "query_url": f"/query",
-            "message": "PDF processed successfully"
+            "status": status,
+            "total_pages": total_pages,
+            "enhanced_json_url": f"/documents/{document_id}/ontology"
         }
         
     except Exception as e:
@@ -199,63 +204,39 @@ async def process_pdf(
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
 
 
-@app.get("/results/{document_id}")
-async def get_results(document_id: str, format: str = "enhanced"):
-    """
-    Retrieve processing results for a document.
-    
-    Args:
-        document_id: Document identifier from processing
-        format: Result format ("enhanced", "index", "full")
-    
-    Returns:
-        Document processing results
-    """
-    output_path = OUTPUT_DIR / document_id
-    
-    if not output_path.exists():
+@app.get("/documents/{document_id}/ontology")
+async def get_ontology(document_id: str):
+    """Return enhanced ontology JSON for a document."""
+    paths = _get_document_paths(document_id)
+    if not paths["enhanced"].exists():
         raise HTTPException(status_code=404, detail=f"Document {document_id} not found")
     
-    # Determine which file to return
-    if format == "enhanced":
-        file_path = output_path / f"{document_id}_enhanced.json"
-    elif format == "index":
-        file_path = output_path / f"{document_id}_index.json"
-    elif format == "full":
-        file_path = output_path / f"{document_id}_full.json"
-    else:
-        raise HTTPException(status_code=400, detail=f"Invalid format: {format}")
-    
-    if not file_path.exists():
-        raise HTTPException(status_code=404, detail=f"File not found: {format}")
-    
-    return FileResponse(
-        file_path,
-        media_type="application/json",
-        filename=file_path.name
-    )
+    try:
+        with open(paths["enhanced"], "r") as f:
+            enhanced = json.load(f)
+        return enhanced
+    except Exception as e:
+        logger.error(f"Failed to load ontology for {document_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to load ontology")
 
 
-@app.post("/query")
-async def query_document(request: QueryRequest):
+@app.post("/documents/{document_id}/query")
+async def query_document(document_id: str, request: QueryBody):
     """
     Query a processed document using natural language.
-    
-    Args:
-        request: Query request with question and document_id
     
     Returns:
         Query results with matched elements and answer
     """
-    logger.info(f"Query for document {request.document_id}: {request.question}")
+    logger.info(f"Query for document {document_id}: {request.question}")
     
     # Find the enhanced document
-    enhanced_path = OUTPUT_DIR / request.document_id / f"{request.document_id}_enhanced.json"
+    enhanced_path = _get_document_paths(document_id)["enhanced"]
     
     if not enhanced_path.exists():
         raise HTTPException(
             status_code=404, 
-            detail=f"Document {request.document_id} not found. Process a PDF first."
+            detail=f"Document {document_id} not found. Upload a PDF first."
         )
     
     try:
@@ -266,25 +247,30 @@ async def query_document(request: QueryRequest):
             vlm_config = VLMConfig.from_env()
         
         # Create agent for this query
-        agent = HybridQueryAgent(
-            schema_path=str(enhanced_path),
-            vlm_config=vlm_config
-        )
+        agent = HybridQueryAgent(schema_path=str(enhanced_path), vlm_config=vlm_config)
         
         # Execute query
         result = agent.query(request.question)
         
         logger.info(f"Query returned {len(result['matched_elements'])} matches")
         
+        matched_elements = []
+        for element in result.get("matched_elements", []):
+            matched_elements.append({
+                "element_id": element.get("element_id"),
+                "type": element.get("type"),
+                "content": element.get("content"),
+                "page_number": element.get("page_number"),
+                "bbox_pixel": element.get("bbox_pixel"),
+                "bbox_pdf": element.get("bbox_pdf"),
+                "relevance": element.get("relevance")
+            })
+        
         return {
-            "status": "success",
-            "document_id": request.document_id,
-            "question": request.question,
-            "answer": result.get('answer_summary', ''),
-            "reasoning": result.get('reasoning', ''),
-            "matched_elements": result['matched_elements'][:5],  # Return top 5
-            "total_matches": len(result['matched_elements']),
-            "filter_stats": result['filter_stats']
+            "answer_summary": result.get("answer_summary") or result.get("answer", ""),
+            "matched_elements": matched_elements,
+            "reasoning": result.get("reasoning", ""),
+            "filter_stats": result.get("filter_stats", {})
         }
         
     except Exception as e:
