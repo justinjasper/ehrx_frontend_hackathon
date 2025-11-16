@@ -16,8 +16,7 @@ type DestinationOption = {
 const DESTINATIONS: DestinationOption[] = [
   { value: "epic", label: "Epic", logo: "/logos/EpicLogo.png" },
   { value: "cerner", label: "Cerner", logo: "/logos/CernerLogo.png" },
-  { value: "oracle", label: "Oracle", logo: "/logos/OracleLogo.png" },
-  { value: "other", label: "Other" }
+  { value: "oracle", label: "Oracle", logo: "/logos/OracleLogo.png" }
 ];
 
 const ExportModal = ({
@@ -96,32 +95,32 @@ const ExportModal = ({
                       checked={destination === opt.value}
                       onChange={() => setDestination(opt.value)}
                     />
-                    {opt.logo ? (
-                      <div 
-                        className="export-logo-box"
+                    <div 
+                      className="export-logo-box"
+                      style={{
+                        width: "80px",
+                        height: "56px"
+                      }}
+                    >
+                      <img
+                        src={opt.logo}
+                        alt={opt.label}
+                        className="export-logo"
                         style={{
-                          width: opt.value === "epic" ? "60px" : "80px",
-                          height: opt.value === "epic" ? "42px" : "56px"
+                          maxWidth: opt.value === "epic" ? "60px" : "100%",
+                          maxHeight: opt.value === "epic" ? "42px" : "100%"
                         }}
-                      >
-                        <img
-                          src={opt.logo}
-                          alt={opt.label}
-                          className="export-logo"
-                          onError={(e) => {
-                            // Fallback if image fails to load
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = "none";
-                            const parent = target.parentElement;
-                            if (parent) {
-                              parent.innerHTML = `<div class="export-logo fallback">${opt.label[0]}</div>`;
-                            }
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <span className="export-label">{opt.label}</span>
-                    )}
+                        onError={(e) => {
+                          // Fallback if image fails to load
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = "none";
+                          const parent = target.parentElement;
+                          if (parent) {
+                            parent.innerHTML = `<div class="export-logo fallback">${opt.label[0]}</div>`;
+                          }
+                        }}
+                      />
+                    </div>
                   </label>
                 ))}
               </div>
