@@ -27,6 +27,46 @@ const QueryTab = ({
     string | null
   >(null);
 
+  const sortedMatches: MatchedElement[] = (queryResult?.matched_elements ?? [])
+    .slice()
+    .sort((a, b) =>
+      a.page_number === b.page_number
+        ? (a.element_id || "").localeCompare(b.element_id || "")
+        : a.page_number - b.page_number
+    );
+
+  const goToMatchAt = (index: number) => {
+    if (!sortedMatches.length) return;
+    const safeIndex = ((index % sortedMatches.length) + sortedMatches.length) % sortedMatches.length;
+    const target = sortedMatches[safeIndex];
+    if (target?.element_id) {
+      setHighlightedElementId(target.element_id);
+    }
+  };
+
+  const currentIndex =
+    highlightedElementId == null
+      ? -1
+      : sortedMatches.findIndex((m) => m.element_id === highlightedElementId);
+
+  const gotoPrev = () => {
+    if (!sortedMatches.length) return;
+    if (currentIndex === -1) {
+      goToMatchAt(0);
+    } else {
+      goToMatchAt(currentIndex - 1);
+    }
+  };
+
+  const gotoNext = () => {
+    if (!sortedMatches.length) return;
+    if (currentIndex === -1) {
+      goToMatchAt(0);
+    } else {
+      goToMatchAt(currentIndex + 1);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!question.trim() || !documentId) return;
@@ -68,6 +108,22 @@ const QueryTab = ({
           <div className="card">
             <h3>Answer Summary</h3>
             <p>{queryResult.answer_summary || "No summary provided."}</p>
+          </div>
+          <div className="card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <strong>Matches:</strong> {sortedMatches.length}
+              {currentIndex >= 0 && sortedMatches.length > 0
+                ? ` (showing ${currentIndex + 1} of ${sortedMatches.length})`
+                : ""}
+            </div>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button type="button" className="btn btn--secondary" onClick={gotoPrev} disabled={!sortedMatches.length}>
+                ← Prev
+              </button>
+              <button type="button" className="btn" onClick={gotoNext} disabled={!sortedMatches.length}>
+                Next →
+              </button>
+            </div>
           </div>
 
           {queryResult.reasoning && (

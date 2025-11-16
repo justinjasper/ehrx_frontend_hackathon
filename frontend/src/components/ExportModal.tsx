@@ -64,6 +64,27 @@ const ExportModal = ({
               />
             </div>
             <div className="form-group">
+              <label htmlFor="exportDocType">Document Type</label>
+              <select
+                id="exportDocType"
+                onChange={() => {}}
+                defaultValue=""
+              >
+                <option value="" disabled>
+                  Select a type
+                </option>
+                <option>Medical Report</option>
+                <option>Appointment Note</option>
+                <option>Progress Note</option>
+                <option>Discharge Summary</option>
+                <option>Lab Results</option>
+                <option>Physician Referral</option>
+                <option>Imaging Report</option>
+                <option>Consent Form</option>
+                <option>Immunization Record</option>
+              </select>
+            </div>
+            <div className="form-group">
               <label>Export to</label>
               <div className="export-options">
                 {DESTINATIONS.map((opt) => (
@@ -88,7 +109,9 @@ const ExportModal = ({
                         <div className="export-logo fallback">{opt.label[0]}</div>
                       </div>
                     )}
-                    <span className="export-label">{opt.label}</span>
+                    {opt.value === "other" ? (
+                      <span className="export-label">{opt.label}</span>
+                    ) : null}
                   </label>
                 ))}
               </div>
