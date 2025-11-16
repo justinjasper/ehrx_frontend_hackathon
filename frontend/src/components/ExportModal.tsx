@@ -14,9 +14,9 @@ type DestinationOption = {
 };
 
 const DESTINATIONS: DestinationOption[] = [
-  { value: "epic", label: "Epic", logo: "/logos/epic.png" },
-  { value: "cerner", label: "Cerner", logo: "/logos/cerner.png" },
-  { value: "oracle", label: "Oracle", logo: "/logos/oracle.png" },
+  { value: "epic", label: "Epic", logo: "/logos/EpicLogo.png" },
+  { value: "cerner", label: "Cerner", logo: "/logos/CernerLogo.png" },
+  { value: "oracle", label: "Oracle", logo: "/logos/OracleLogo.png" },
   { value: "other", label: "Other" }
 ];
 
@@ -102,6 +102,15 @@ const ExportModal = ({
                           src={opt.logo}
                           alt={opt.label}
                           className="export-logo"
+                          onError={(e) => {
+                            // Fallback if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = "none";
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `<div class="export-logo fallback">${opt.label[0]}</div>`;
+                            }
+                          }}
                         />
                       </div>
                     ) : (
