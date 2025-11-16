@@ -205,7 +205,7 @@ useEffect(() => {
     <div className="app">
       <header className="app__header">
         <h1>EHRX Pipeline UI</h1>
-        <p>Upload PDFs, explore ontology, and run natural language queries.</p>
+        <p>Import faxed medical records, standardize them into EHR-compatible formats, extract insights via natural-language queries.</p>
       </header>
 
       <div className="tabs">
