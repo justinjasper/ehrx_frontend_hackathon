@@ -136,7 +136,7 @@ function App() {
     setProcessingSampleId(filename);
     setUploadMessage(null);
     setError(null);
-    await new Promise((resolve) => setTimeout(resolve, 10000));
+    await new Promise((resolve) => setTimeout(resolve, 4000));
 
     try {
       // Fetch preprocessed document id without running heavy processing
