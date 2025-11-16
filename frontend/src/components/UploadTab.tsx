@@ -91,21 +91,21 @@ const UploadTab = ({
           <input
             type="radio"
             name="upload-mode"
-            value="sample"
-            checked={mode === "sample"}
-            onChange={() => setMode("sample")}
-          />
-          Use Sample Doc
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="upload-mode"
             value="upload"
             checked={mode === "upload"}
             onChange={() => setMode("upload")}
           />
           Upload File
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="upload-mode"
+            value="sample"
+            checked={mode === "sample"}
+            onChange={() => setMode("sample")}
+          />
+          Use Sample Doc
         </label>
       </div>
 
