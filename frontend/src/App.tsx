@@ -41,20 +41,12 @@ function App() {
     null
   );
   const samplesFetchedRef = useRef(false);
-  const [processedDocumentIds, setProcessedDocumentIds] = useState<string[]>(
-    []
-  );
-  const [simulatingProcessingId, setSimulatingProcessingId] = useState<
-    string | null
-  >(null);
+  const [processedDocumentIds, setProcessedDocumentIds] = useState<string[]>([]);
 
   const loadDocuments = async () => {
     try {
       const response = await fetchDocuments();
       setDocuments(response.documents ?? []);
-      if (!selectedDocument && response.documents?.length) {
-        setSelectedDocument(response.documents[0].document_id);
-      }
     } catch (err) {
       console.error(err);
       setError("Failed to fetch documents.");
@@ -65,26 +57,26 @@ function App() {
     loadDocuments();
   }, []);
 
-useEffect(() => {
-  if (samplesFetchedRef.current) return;
-  samplesFetchedRef.current = true;
+  useEffect(() => {
+    if (samplesFetchedRef.current) return;
+    samplesFetchedRef.current = true;
 
-  const loadSamples = async () => {
-    setSamplesLoading(true);
-    setSamplesError(null);
-    try {
-      const response = await fetchSampleDocuments();
-      setSampleDocuments(response.samples ?? []);
-    } catch (err) {
-      console.error(err);
-      setSamplesError("Failed to load sample documents.");
-    } finally {
-      setSamplesLoading(false);
-    }
-  };
+    const loadSamples = async () => {
+      setSamplesLoading(true);
+      setSamplesError(null);
+      try {
+        const response = await fetchSampleDocuments();
+        setSampleDocuments(response.samples ?? []);
+      } catch (err) {
+        console.error(err);
+        setSamplesError("Failed to load sample documents.");
+      } finally {
+        setSamplesLoading(false);
+      }
+    };
 
-  loadSamples();
-}, []);
+    loadSamples();
+  }, []);
 
   useEffect(() => {
     if (!selectedDocument) {
@@ -92,7 +84,7 @@ useEffect(() => {
       return;
     }
 
-    const loadOntology = async () => {
+    const loadOntologyInner = async () => {
       setLoadingOntology(true);
       setError(null);
       try {
@@ -107,19 +99,8 @@ useEffect(() => {
       }
     };
 
-    loadOntology();
+    loadOntologyInner();
   }, [selectedDocument]);
-
-  // Simulate processing for an existing document without API/LLM call
-  const simulateProcessExistingDocument = async (documentId: string) => {
-    if (processedDocumentIds.includes(documentId)) return;
-    setSimulatingProcessingId(documentId);
-    await new Promise((resolve) => setTimeout(resolve, 10000));
-    setProcessedDocumentIds((prev) =>
-      prev.includes(documentId) ? prev : [...prev, documentId]
-    );
-    setSimulatingProcessingId(null);
-  };
 
   const handleUpload = async (
     file: File,
@@ -151,14 +132,21 @@ useEffect(() => {
     pageRange: string,
     documentType: string
   ) => {
-    // Do NOT call API here; simulate processing delay then allow ontology selection
+    // Simulate processing delay only; no API/LLM call.
     setProcessingSampleId(filename);
     setUploadMessage(null);
     setError(null);
     await new Promise((resolve) => setTimeout(resolve, 10000));
-    // After delay, mark a placeholder processed item so it can be selected later.
-    // We don't know the backend document_id here; processing is just gated in UI.
+    // Mark as processed (synthetic id) and allow selection
+    const syntheticId = `${filename.replace(/\s+/g, "_")}`;
+    setProcessedDocumentIds((prev) =>
+      prev.includes(syntheticId) ? prev : [...prev, syntheticId]
+    );
+    setSelectedDocument(syntheticId);
+    setCachedPdfFile(null);
     setProcessingSampleId(null);
+    setQueryResult(null);
+    setActiveTab("ontology");
   };
 
   const handleQuery = async (question: string) => {
@@ -193,7 +181,6 @@ useEffect(() => {
     return map;
   }, [ontology]);
 
-  // Only allow selecting documents that have been "processed" in UI
   const processedDocuments = documents.filter((d) =>
     processedDocumentIds.includes(d.document_id)
   );
@@ -258,71 +245,6 @@ useEffect(() => {
           />
         )}
       </section>
-
-      {/* Processing controls on Upload tab: allow selecting existing docs to process */}
-      {activeTab === "upload" && (
-        <div className="card" style={{ marginTop: "1rem" }}>
-          <h3>Process Existing Documents</h3>
-          {documents.length === 0 ? (
-            <p>No documents found.</p>
-          ) : (
-            <div className="table-wrapper">
-              <table className="sample-table">
-                <thead>
-                  <tr>
-                    <th>Document</th>
-                    <th>Pages</th>
-                    <th>Status</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {documents.map((doc) => {
-                    const isProcessed = processedDocumentIds.includes(
-                      doc.document_id
-                    );
-                    const isSimulating = simulatingProcessingId === doc.document_id;
-                    return (
-                      <tr key={doc.document_id}>
-                        <td>{doc.document_id}</td>
-                        <td>{doc.total_pages}</td>
-                        <td>
-                          {isProcessed ? (
-                            <span className="status-chip status-chip--success">
-                              Processed
-                            </span>
-                          ) : isSimulating ? (
-                            <span className="status-chip status-chip--warning">
-                              Processing…
-                            </span>
-                          ) : (
-                            <span className="status-chip">Not processed</span>
-                          )}
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          <button
-                            type="button"
-                            className="btn"
-                            onClick={() =>
-                              simulateProcessExistingDocument(doc.document_id)
-                            }
-                            disabled={isProcessed || isSimulating}
-                          >
-                            {isSimulating ? "Processing…" : "Process"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <p className="muted small-note">
-            Note: Processing is simulated and takes ~10 seconds.
-          </p>
-        </div>
-      )}
     </div>
   );
 }
