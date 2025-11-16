@@ -47,7 +47,7 @@ data/
 runs/
 assets/
 *.pdf
-*.png
+# *.png
 *.jpg
 *.jpeg
 *.csv
