@@ -132,21 +132,44 @@ function App() {
     pageRange: string,
     documentType: string
   ) => {
-    // Simulate processing delay only; no API/LLM call.
+    // Simulate processing delay only, then hydrate from preprocessed backend data
     setProcessingSampleId(filename);
     setUploadMessage(null);
     setError(null);
     await new Promise((resolve) => setTimeout(resolve, 10000));
-    // Mark as processed (synthetic id) and allow selection
-    const syntheticId = `${filename.replace(/\s+/g, "_")}`;
-    setProcessedDocumentIds((prev) =>
-      prev.includes(syntheticId) ? prev : [...prev, syntheticId]
-    );
-    setSelectedDocument(syntheticId);
-    setCachedPdfFile(null);
-    setProcessingSampleId(null);
-    setQueryResult(null);
-    setActiveTab("ontology");
+
+    try {
+      // Fetch preprocessed document id without running heavy processing
+      const response = await processSampleDocument(
+        filename,
+        pageRange,
+        documentType
+      );
+
+      // Refresh documents and mark this one as processed in UI
+      await loadDocuments();
+      setProcessedDocumentIds((prev) =>
+        prev.includes(response.document_id) ? prev : [...prev, response.document_id]
+      );
+      setSelectedDocument(response.document_id);
+
+      // Fetch and cache the sample PDF so overlays work in Query tab
+      try {
+        const pdf = await fetchSamplePdf(filename);
+        setCachedPdfFile(pdf);
+      } catch (pdfErr) {
+        console.warn("Failed to fetch sample PDF for overlays:", pdfErr);
+        setCachedPdfFile(null);
+      }
+
+      setActiveTab("ontology");
+      setQueryResult(null);
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || "Processing failed.");
+    } finally {
+      setProcessingSampleId(null);
+    }
   };
 
   const handleQuery = async (question: string) => {
