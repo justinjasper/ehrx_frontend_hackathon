@@ -188,6 +188,7 @@ textarea {
 
 .small-note {
   margin-top: 0.35rem;
+  text-align: right;
 }
 
 @media (min-width: 960px) {
