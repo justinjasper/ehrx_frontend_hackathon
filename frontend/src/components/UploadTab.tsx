@@ -117,12 +117,12 @@ const UploadTab = ({
         <div className="card">
           <div className="section-title">
             <div>
-              <h3>Bundled Sample Documents</h3>
-              <p>Select a PDF to run through the pipeline instantly.</p>
+              <h3>Sample Medical Records</h3>
+              <p>Select a PDF record to structure and extract data insights</p>
             </div>
           </div>
 
-          {samplesLoading && <p>Loading sample documents…</p>}
+          {samplesLoading && <p>Loading sample medical records…</p>}
           {samplesError && (
             <div className="alert alert--error">{samplesError}</div>
           )}
