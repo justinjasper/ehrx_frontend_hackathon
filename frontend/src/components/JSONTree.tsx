@@ -67,11 +67,11 @@ const JSONTree = ({ data, label = "root" }: JSONTreeProps) => {
     );
   }
 
-  // For array indices, show type when collapsed
-  const displayLabel = !open && typeof label === "string" && /^\d+$/.test(label)
+  // For array indices, always show type instead of number
+  const displayLabel = typeof label === "string" && /^\d+$/.test(label)
     ? (() => {
         const typePreview = getTypePreview(data);
-        return typePreview || label;
+        return typePreview || "";
       })()
     : label;
 
