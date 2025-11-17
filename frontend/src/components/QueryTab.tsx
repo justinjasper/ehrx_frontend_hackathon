@@ -234,7 +234,10 @@ const QueryTab = ({
             file={pdfFile}
             matchedElements={matchedElements}
             highlightedElementId={highlightedElementId}
-            onHighlightChange={(elementId) => setHighlightedElementId(elementId)}
+            onHighlightChange={(elementId) => {
+              // Handle toggle: empty string or null clears the highlight
+              setHighlightedElementId(elementId === "" || elementId === null ? null : elementId);
+            }}
             pageInfoMap={pageInfoMap}
             sortedMatches={sortedMatches}
             currentIndex={currentIndex}

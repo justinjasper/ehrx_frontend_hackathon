@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getDocument,
   GlobalWorkerOptions,
-  PDFDocumentProxy
+  PDFDocumentProxy,
+  PDFPageProxy
 } from "pdfjs-dist";
 import { MatchedElement } from "../types";
 import worker from "pdfjs-dist/build/pdf.worker?url";
@@ -36,7 +37,8 @@ const PDFViewer = ({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-  const [originalPageSize, setOriginalPageSize] = useState({ width: 0, height: 0 });
+  const [viewport, setViewport] = useState<any>(null);
+  const [currentPageObj, setCurrentPageObj] = useState<PDFPageProxy | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -64,19 +66,19 @@ const PDFViewer = ({
 
     const renderPage = async () => {
       const page = await doc.getPage(currentPage);
-      // Get original page size (scale 1.0) for coordinate transformation
-      const originalViewport = page.getViewport({ scale: 1.0 });
-      setOriginalPageSize({ width: originalViewport.width, height: originalViewport.height });
+      setCurrentPageObj(page);
       
-      // Render at scale 1.5
-      const viewport = page.getViewport({ scale: 1.5 });
+      // Render at scale 1.5 (must match the scale used for transformation)
+      const viewportObj = page.getViewport({ scale: 1.5 });
+      setViewport(viewportObj);
+      
       const canvas = canvasRef.current;
       if (!canvas) return;
       const context = canvas.getContext("2d");
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-      await page.render({ canvasContext: context!, viewport }).promise;
-      setCanvasSize({ width: viewport.width, height: viewport.height });
+      canvas.height = viewportObj.height;
+      canvas.width = viewportObj.width;
+      await page.render({ canvasContext: context!, viewport: viewportObj }).promise;
+      setCanvasSize({ width: viewportObj.width, height: viewportObj.height });
     };
 
     renderPage();
@@ -112,15 +114,6 @@ const PDFViewer = ({
   }
 
   const pageMatches = matchesByPage.get(currentPage) ?? [];
-  const pageInfo = pageInfoMap.get(currentPage);
-  const scaleX =
-    pageInfo?.width_px && canvasSize.width
-      ? canvasSize.width / pageInfo.width_px
-      : 1;
-  const scaleY =
-    pageInfo?.height_px && canvasSize.height
-      ? canvasSize.height / pageInfo.height_px
-      : 1;
 
   return (
     <div className="pdf-viewer">
@@ -189,43 +182,78 @@ const PDFViewer = ({
           </div>
         )}
         {pageMatches.map((element) => {
-          if (!element.bbox_pixel || !pageInfo?.width_px || !pageInfo?.height_px) return null;
-          const [x0, y0, x1, y1] = element.bbox_pixel;
+          if (!viewport || !currentPageObj) return null;
           
-          // bbox_pixel coordinate system (from backend documentation):
-          // - Origin: Top-left corner (0, 0)
-          // - Y-axis: Increases downward (standard image coordinates)
-          // - Format: [x0, y0, x1, y1]
-          //   - x0 = Left edge (pixels from left)
-          //   - y0 = Top edge (pixels from top)
-          //   - x1 = Right edge (pixels from left)
-          //   - y1 = Bottom edge (pixels from top)
-          // - Units: Pixels relative to rasterized image at 200 DPI
-          // - Reference dimensions: pageInfo.width_px × pageInfo.height_px
-          //
-          // Since bbox_pixel is already in top-left origin coordinates (Y increases downward),
-          // we can use the coordinates directly without any Y-flip transformation.
-          // We just need to scale from pageInfo dimensions to the rendered canvas dimensions.
+          // Prefer bbox_pdf if available (more accurate with PDF.js viewport)
+          // Otherwise fall back to bbox_pixel
+          let coords: { left: number; top: number; width: number; height: number } | null = null;
           
-          // Scale coordinates to match the rendered canvas
-          // scaleX and scaleY convert from pageInfo dimensions to canvas dimensions
+          if (element.bbox_pdf && element.bbox_pdf.length === 4) {
+            // Use bbox_pdf with proper viewport transformation
+            // Get base viewport for PDF dimensions
+            const baseViewport = currentPageObj.getViewport({ scale: 1.0 });
+            const pdfHeightPoints = baseViewport.height * (72 / 96);
+            const scale = viewport.scale || 1.5;
+            const [x0_pdf, y0_pdf, x1_pdf, y1_pdf] = element.bbox_pdf;
+            
+            // Transform coordinates
+            const left = x0_pdf * (96 / 72) * scale;
+            const right = x1_pdf * (96 / 72) * scale;
+            const top = (pdfHeightPoints - y1_pdf) * (96 / 72) * scale;
+            const bottom = (pdfHeightPoints - y0_pdf) * (96 / 72) * scale;
+            
+            coords = {
+              left,
+              top,
+              width: right - left,
+              height: bottom - top
+            };
+          } else if (element.bbox_pixel && element.bbox_pixel.length === 4) {
+            // Fall back to bbox_pixel: scale from rasterized image to viewport
+            const [x0, y0, x1, y1] = element.bbox_pixel;
+            const pageInfo = pageInfoMap.get(currentPage);
+            
+            if (!pageInfo?.width_px || !pageInfo?.height_px) return null;
+            
+            // Scale from rasterized image dimensions to viewport dimensions
+            const scaleX = viewport.width / pageInfo.width_px;
+            const scaleY = viewport.height / pageInfo.height_px;
+            
+            coords = {
+              left: x0 * scaleX,
+              top: y0 * scaleY,
+              width: (x1 - x0) * scaleX,
+              height: (y1 - y0) * scaleY
+            };
+          } else {
+            return null;
+          }
+          
+          if (!coords) return null;
+          
           const style = {
             position: "absolute" as const,
-            left: `${x0 * scaleX}px`,
-            top: `${y0 * scaleY}px`,
-            width: `${(x1 - x0) * scaleX}px`,
-            height: `${(y1 - y0) * scaleY}px`,
+            left: `${coords.left}px`,
+            top: `${coords.top}px`,
+            width: `${coords.width}px`,
+            height: `${coords.height}px`,
             pointerEvents: "auto" as const
           };
+          
           const highlight = highlightedElementId === element.element_id;
           return (
             <div
               key={element.element_id}
               className={`bbox ${highlight ? "bbox--highlighted" : ""}`}
               style={style}
-              onClick={() =>
-                onHighlightChange(element.element_id, element.page_number)
-              }
+              onClick={() => {
+                // Toggle: if already highlighted, clear it; otherwise set it
+                if (highlight) {
+                  onHighlightChange("", element.page_number); // Clear highlight
+                } else {
+                  onHighlightChange(element.element_id, element.page_number);
+                }
+              }}
             />
           );
         })}
