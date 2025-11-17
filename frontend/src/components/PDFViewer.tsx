@@ -200,17 +200,27 @@ const PDFViewer = ({
             // The rasterized image dimensions are in pageInfo.width_px × pageInfo.height_px
             // We need to scale these coordinates to match the PDF.js viewport dimensions
             
-            // Calculate scale: from rasterized image (200 DPI) to viewport (rendered at scale 1.5)
-            // Direct ratio: viewport dimensions / pageInfo dimensions
+            // Get base viewport to understand the actual PDF dimensions in CSS pixels
+            const baseViewport = currentPageObj.getViewport({ scale: 1.0 });
+            
+            // Calculate scale factors
+            // The rasterized image (pageInfo) was created at 200 DPI from the PDF
+            // PDF.js viewport at scale 1.0 gives dimensions in CSS pixels (96 DPI)
+            // The current viewport is at scale 1.5, so it's 1.5x the base viewport
+            
+            // Calculate the effective DPI ratio: rasterized (200 DPI) vs CSS pixels (96 DPI)
+            // Then account for the viewport scale (1.5)
+            // Scale = (viewport_scale * CSS_pixel_size) / rasterized_pixel_size
+            // Or more simply: viewport dimensions / pageInfo dimensions
             const scaleX = viewport.width / pageInfo.width_px;
             const scaleY = viewport.height / pageInfo.height_px;
             
             // Apply scaling - bbox_pixel coordinates are already in top-left origin, no flip needed
-            // Ensure coordinates are within bounds
-            const left = Math.max(0, x0 * scaleX);
-            const top = Math.max(0, y0 * scaleY);
-            const width = Math.max(0, (x1 - x0) * scaleX);
-            const height = Math.max(0, (y1 - y0) * scaleY);
+            // The coordinates should align directly with the canvas (0,0 is top-left of canvas)
+            const left = x0 * scaleX;
+            const top = y0 * scaleY;
+            const width = (x1 - x0) * scaleX;
+            const height = (y1 - y0) * scaleY;
             
             coords = {
               left,

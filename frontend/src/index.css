@@ -244,6 +244,17 @@ textarea {
 .pdf-canvas-wrapper {
   position: relative;
   display: inline-block;
+  margin: 0;
+  padding: 0;
+  line-height: 0; /* Remove any line-height spacing */
+}
+
+.pdf-canvas-wrapper canvas {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  vertical-align: top; /* Remove any baseline alignment offset */
 }
 
 .bbox {
