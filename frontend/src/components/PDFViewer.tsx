@@ -189,30 +189,34 @@ const PDFViewer = ({
           </div>
         )}
         {pageMatches.map((element) => {
-          if (!element.bbox_pixel || originalPageSize.height === 0) return null;
+          if (!element.bbox_pixel || !pageInfo?.height_px || originalPageSize.height === 0) return null;
           const [x0, y0, x1, y1] = element.bbox_pixel;
           
-          // bbox_pixel is in pixel coordinates of the original PDF page (scale 1.0)
+          // bbox_pixel is in pixel coordinates relative to pageInfo dimensions (original PDF page size)
           // PDF coordinate system: origin at bottom-left, Y increases upward
           // Screen coordinate system: origin at top-left, Y increases downward
-          // We need to flip Y coordinates using the original page height
+          // We need to flip Y coordinates using pageInfo.height_px (the reference the backend uses)
           
-          const originalHeight = originalPageSize.height;
+          // Use pageInfo.height_px for the coordinate flip since bbox_pixel is relative to this
+          const pdfPageHeight = pageInfo.height_px;
           
-          // Convert from PDF coords to screen coords
-          // In PDF: y0 is bottom (smaller), y1 is top (larger)
-          // In screen: we want y0 at top, y1 at bottom
-          const y_top_screen = originalHeight - y1;    // Top edge in screen coords
-          const y_bottom_screen = originalHeight - y0; // Bottom edge in screen coords
+          // Convert from PDF coords (bottom-left origin) to screen coords (top-left origin)
+          // In PDF: y0 is bottom (smaller Y), y1 is top (larger Y)
+          // After flip: y_top_screen should be at the top, y_bottom_screen at the bottom
+          const y_top_screen = pdfPageHeight - y1;    // Top of box in screen coords
+          const y_bottom_screen = pdfPageHeight - y0; // Bottom of box in screen coords
           
-          // Now scale to match the rendered canvas (which is at scale 1.5)
-          const scale = 1.5; // Match the rendering scale
+          // Ensure coordinates are within bounds
+          const clamped_y_top = Math.max(0, y_top_screen);
+          const clamped_y_bottom = Math.min(pdfPageHeight, y_bottom_screen);
+          
+          // Scale coordinates to match the rendered canvas size using scaleX/scaleY
           const style = {
             position: "absolute" as const,
-            left: `${x0 * scale}px`,
-            top: `${y_top_screen * scale}px`,
-            width: `${(x1 - x0) * scale}px`,
-            height: `${(y_bottom_screen - y_top_screen) * scale}px`,
+            left: `${x0 * scaleX}px`,
+            top: `${clamped_y_top * scaleY}px`,
+            width: `${(x1 - x0) * scaleX}px`,
+            height: `${(clamped_y_bottom - clamped_y_top) * scaleY}px`,
             pointerEvents: "auto" as const
           };
           const highlight = highlightedElementId === element.element_id;
