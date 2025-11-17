@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import {
   DocumentSummary,
@@ -49,19 +49,33 @@ function App() {
   const [availablePrecomputedDocs, setAvailablePrecomputedDocs] = useState<string[]>([]);
   const [isPrecomputedAnswer, setIsPrecomputedAnswer] = useState(false);
 
-  const loadDocuments = async () => {
-    try {
-      const response = await fetchDocuments();
-      setDocuments(response.documents ?? []);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to fetch documents.");
-    }
-  };
+  const loadDocuments = useCallback(
+    async (options?: { retries?: number; delayMs?: number }) => {
+      const retries = options?.retries ?? 0;
+      const delayMs = options?.delayMs ?? 2000;
+      let attempt = 0;
+
+      while (true) {
+        try {
+          const response = await fetchDocuments();
+          setDocuments(response.documents ?? []);
+          return true;
+        } catch (err) {
+          console.error("Failed to fetch documents (attempt %d)", attempt + 1, err);
+          if (attempt >= retries) {
+            return false;
+          }
+          attempt += 1;
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     loadDocuments();
-  }, []);
+  }, [loadDocuments]);
 
   useEffect(() => {
     if (samplesFetchedRef.current) return;
@@ -151,7 +165,7 @@ function App() {
     setError(null);
     try {
       const response = await uploadDocument(file, pageRange, documentType);
-      await loadDocuments();
+      await loadDocuments({ retries: 5, delayMs: 3000 });
       setSelectedDocument(response.document_id);
       setCachedPdfFile(file);
       setActiveTab("ontology");
@@ -186,7 +200,7 @@ function App() {
       );
 
       // Refresh documents and mark this one as processed in UI
-      await loadDocuments();
+      await loadDocuments({ retries: 5, delayMs: 3000 });
       setProcessedDocumentIds((prev) =>
         prev.includes(response.document_id) ? prev : [...prev, response.document_id]
       );

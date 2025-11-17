@@ -243,13 +243,23 @@ const UploadTab = ({
         </select>
       </div>
 
-      <button
-          className="btn"
-          type="submit"
-          disabled={!file || uploading}
-        >
-          {uploading ? "Uploading…" : "Upload & Process"}
-        </button>
+              <button
+                className="btn"
+                type="submit"
+                disabled={!file || uploading}
+              >
+                {uploading ? (
+                  <>
+                    Uploading…
+                    <span
+                      className="btn__spinner"
+                      aria-hidden="true"
+                    />
+                  </>
+                ) : (
+                  "Upload & Process"
+                )}
+              </button>
           <p className="muted small-note">
             Note: Uploads will take ~5 minutes.
           </p>
