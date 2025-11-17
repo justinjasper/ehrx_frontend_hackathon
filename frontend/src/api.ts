@@ -16,9 +16,11 @@ const withBase = (path: string) => `${API_BASE_URL}${path}`;
 async function handleResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const message = await response.text();
-    throw new Error(
+    const error = new Error(
       message || `Request failed with status ${response.status}`
-    );
+    ) as Error & { status?: number };
+    error.status = response.status;
+    throw error;
   }
   return response.json() as Promise<T>;
 }
