@@ -23,7 +23,7 @@ const combineConsecutiveListItems = (data: unknown): unknown => {
         typeof item === "object" &&
         item !== null &&
         "type" in item &&
-        item.type === "list_item"
+        (item.type === "list_item" || item.type === "list_items")
       ) {
         consecutiveListItems.push(item as Record<string, unknown>);
       } else {

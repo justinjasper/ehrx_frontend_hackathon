@@ -21,8 +21,20 @@ const FIELDS_TO_EXCLUDE = new Set([
   "error"
 ]);
 
+// Get type from an object for preview
+const getTypePreview = (data: unknown): string => {
+  if (typeof data === "object" && data !== null && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>;
+    if (typeof obj.type === "string" && obj.type.trim()) {
+      return obj.type;
+    }
+  }
+  return "";
+};
+
 const JSONTree = ({ data, label = "root" }: JSONTreeProps) => {
   const [open, setOpen] = useState(true);
+  const isRoot = label === "root";
 
   if (!isObject(data) && !Array.isArray(data)) {
     return (
@@ -44,6 +56,25 @@ const JSONTree = ({ data, label = "root" }: JSONTreeProps) => {
     );
   }
 
+  // For array indices, show type when collapsed
+  const displayLabel = !open && typeof label === "string" && /^\d+$/.test(label)
+    ? (() => {
+        const typePreview = getTypePreview(data);
+        return typePreview || label;
+      })()
+    : label;
+
+  // Skip root wrapper - render children directly
+  if (isRoot) {
+    return (
+      <>
+        {entries.map(([key, value]) => (
+          <JSONTree key={String(key)} data={value} label={String(key)} />
+        ))}
+      </>
+    );
+  }
+
   return (
     <div className="json-node">
       <div
@@ -51,7 +82,7 @@ const JSONTree = ({ data, label = "root" }: JSONTreeProps) => {
         onClick={() => setOpen((prev) => !prev)}
         role="button"
       >
-        {open ? "▼" : "▶"} {label}
+        {open ? "▼" : "▶"} {displayLabel}
       </div>
       {open &&
         entries.map(([key, value]) => (
