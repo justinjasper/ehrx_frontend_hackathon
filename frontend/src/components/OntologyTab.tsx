@@ -1,6 +1,6 @@
 import JSONTree from "./JSONTree";
 import { DocumentSummary, OntologyDocument } from "../types";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import ExportModal from "./ExportModal";
 
 interface OntologyTabProps {
@@ -11,6 +11,58 @@ interface OntologyTabProps {
   loading: boolean;
   onRefresh: () => void;
 }
+
+// Recursively process data to combine consecutive list_items
+const combineConsecutiveListItems = (data: unknown): unknown => {
+  if (Array.isArray(data)) {
+    const result: unknown[] = [];
+    let consecutiveListItems: Record<string, unknown>[] = [];
+    
+    for (const item of data) {
+      if (
+        typeof item === "object" &&
+        item !== null &&
+        "type" in item &&
+        item.type === "list_item"
+      ) {
+        consecutiveListItems.push(item as Record<string, unknown>);
+      } else {
+        // If we have accumulated list_items, combine them first
+        if (consecutiveListItems.length > 0) {
+          const combined = { ...consecutiveListItems[0] };
+          const contents = consecutiveListItems
+            .map((li) => li.content)
+            .filter((c): c is string => typeof c === "string");
+          combined.content = contents.join("\n");
+          result.push(combineConsecutiveListItems(combined));
+          consecutiveListItems = [];
+        }
+        result.push(combineConsecutiveListItems(item));
+      }
+    }
+    
+    // Handle any remaining consecutive list_items at the end
+    if (consecutiveListItems.length > 0) {
+      const combined = { ...consecutiveListItems[0] };
+      const contents = consecutiveListItems
+        .map((li) => li.content)
+        .filter((c): c is string => typeof c === "string");
+      combined.content = contents.join("\n");
+      result.push(combineConsecutiveListItems(combined));
+    }
+    
+    return result;
+  } else if (typeof data === "object" && data !== null) {
+    const obj = data as Record<string, unknown>;
+    const processed: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      processed[key] = combineConsecutiveListItems(value);
+    }
+    return processed;
+  }
+  
+  return data;
+};
 
 const OntologyTab = ({
   documents,
@@ -23,6 +75,12 @@ const OntologyTab = ({
   const [exportOpen, setExportOpen] = useState(false);
   const suggestedName =
     ontology?.document_id ? `${ontology.document_id}.json` : "ontology.json";
+
+  // Process ontology to combine consecutive list_items
+  const processedOntology = useMemo(() => {
+    if (!ontology) return null;
+    return combineConsecutiveListItems(ontology) as OntologyDocument;
+  }, [ontology]);
 
   return (
     <div className="grid">
@@ -78,7 +136,7 @@ const OntologyTab = ({
           </div>
 
           <div className="json-tree" style={{ gridColumn: "1 / -1" }}>
-            <JSONTree data={ontology} />
+            <JSONTree data={processedOntology} />
           </div>
 
           <div style={{ gridColumn: "1 / -1", display: "flex", justifyContent: "flex-end" }}>
