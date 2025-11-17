@@ -36,14 +36,10 @@ const QueryTab = ({
   >(null);
   const [isProcessingSuggested, setIsProcessingSuggested] = useState(false);
   const answerSectionRef = useRef<HTMLDivElement>(null);
+  const pdfViewerRef = useRef<HTMLDivElement>(null);
 
-  const handleSuggestedQuestionClick = async (suggestedQuestion: string) => {
+  const handleSuggestedQuestionClick = (suggestedQuestion: string) => {
     setQuestion(suggestedQuestion);
-    setIsProcessingSuggested(true);
-    // Add 4-second delay to mimic loading
-    await new Promise((resolve) => setTimeout(resolve, 4000));
-    setIsProcessingSuggested(false);
-    await onSubmit(suggestedQuestion);
   };
 
   // Auto-scroll to answer section when query result appears
@@ -124,22 +120,29 @@ const QueryTab = ({
           </select>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-          <form className="grid" onSubmit={handleSubmit} style={{ margin: 0 }}>
-            <div className="form-group">
-              <label htmlFor="question">Question</label>
-              <textarea
-                id="question"
-                placeholder="Example: What medications is the patient taking?"
-                value={question}
-                onChange={(event) => setQuestion(event.target.value)}
-                disabled={isProcessing || !documentId}
-                style={{ minHeight: "200px" }}
-              />
-            </div>
-            <button className="btn" type="submit" disabled={isProcessing || !question}>
-              {isProcessing ? "Running Query…" : "Submit Query"}
-            </button>
-          </form>
+          <div>
+            <form onSubmit={handleSubmit} style={{ margin: 0 }}>
+              <div className="form-group">
+                <label htmlFor="question">Question</label>
+                <textarea
+                  id="question"
+                  placeholder="Example: What medications is the patient taking?"
+                  value={question}
+                  onChange={(event) => setQuestion(event.target.value)}
+                  disabled={isProcessing || !documentId}
+                  style={{ minHeight: "200px" }}
+                />
+              </div>
+              <button 
+                className="btn" 
+                type="submit" 
+                disabled={isProcessing || !question}
+                style={{ padding: "0.5rem 1rem", height: "auto", minHeight: "2.5rem" }}
+              >
+                {isProcessing ? "Running Query…" : "Submit Query"}
+              </button>
+            </form>
+          </div>
 
           {precomputedAnswers && precomputedAnswers.questions.length > 0 && (
             <div>
@@ -212,19 +215,27 @@ const QueryTab = ({
             highlightedElementId={highlightedElementId}
             onHighlight={(elementId, pageNumber) => {
               setHighlightedElementId(elementId);
+              // Scroll to PDF viewer when View button is clicked
+              if (pdfViewerRef.current) {
+                setTimeout(() => {
+                  pdfViewerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 100);
+              }
             }}
           />
         </div>
       )}
 
       {ontologyAvailable ? (
-        <PDFViewer
-          file={pdfFile}
-          matchedElements={matchedElements}
-          highlightedElementId={highlightedElementId}
-          onHighlightChange={(elementId) => setHighlightedElementId(elementId)}
-          pageInfoMap={pageInfoMap}
-        />
+        <div ref={pdfViewerRef}>
+          <PDFViewer
+            file={pdfFile}
+            matchedElements={matchedElements}
+            highlightedElementId={highlightedElementId}
+            onHighlightChange={(elementId) => setHighlightedElementId(elementId)}
+            pageInfoMap={pageInfoMap}
+          />
+        </div>
       ) : (
         <div className="card">
           PDF preview requires ontology data. Upload a document or switch to the
