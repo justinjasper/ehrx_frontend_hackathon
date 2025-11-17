@@ -37,6 +37,17 @@ const JSONTree = ({ data, label = "root" }: JSONTreeProps) => {
   const isRoot = label === "root";
 
   if (!isObject(data) && !Array.isArray(data)) {
+    // Special handling for content fields - display as plain text with line breaks
+    if (label === "content" && typeof data === "string") {
+      return (
+        <div className="json-node">
+          <span className="json-key">{label}: </span>
+          <span className="json-value" style={{ whiteSpace: "pre-wrap" }}>
+            {data}
+          </span>
+        </div>
+      );
+    }
     return (
       <div className="json-node">
         <span className="json-key">{label}: </span>
