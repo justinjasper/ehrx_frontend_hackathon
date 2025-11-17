@@ -115,7 +115,7 @@ const OntologyTab = ({
       {loading && <div className="card">Loading ontology…</div>}
 
       {!loading && ontology && (
-        <div className="grid grid--two-columns">
+        <div className="grid">
           <div className="card">
             <h3>Document Summary</h3>
             <p>
@@ -130,14 +130,7 @@ const OntologyTab = ({
             </p>
           </div>
 
-          <div className="card">
-            <h3>Patient Demographics</h3>
-            <pre style={{ whiteSpace: "pre-wrap" }}>
-              {JSON.stringify(ontology.patient_demographics ?? {}, null, 2)}
-            </pre>
-          </div>
-
-          <div className="json-tree" style={{ gridColumn: "1 / -1" }}>
+          <div className="json-tree">
             <JSONTree data={processedOntology} />
           </div>
         </div>
