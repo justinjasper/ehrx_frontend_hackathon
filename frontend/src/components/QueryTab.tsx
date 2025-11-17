@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MatchedElement, PrecomputedAnswer, QueryResponse } from "../types";
 import MatchedElementsList from "./MatchedElementsList";
 import PDFViewer from "./PDFViewer";
@@ -34,11 +34,24 @@ const QueryTab = ({
   const [highlightedElementId, setHighlightedElementId] = useState<
     string | null
   >(null);
+  const [isProcessingSuggested, setIsProcessingSuggested] = useState(false);
+  const answerSectionRef = useRef<HTMLDivElement>(null);
 
-  const handleSuggestedQuestionClick = (suggestedQuestion: string) => {
+  const handleSuggestedQuestionClick = async (suggestedQuestion: string) => {
     setQuestion(suggestedQuestion);
-    onSubmit(suggestedQuestion);
+    setIsProcessingSuggested(true);
+    // Add 4-second delay to mimic loading
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    setIsProcessingSuggested(false);
+    await onSubmit(suggestedQuestion);
   };
+
+  // Auto-scroll to answer section when query result appears
+  useEffect(() => {
+    if (queryResult && answerSectionRef.current) {
+      answerSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [queryResult]);
 
   const sortedMatches: MatchedElement[] = (queryResult?.matched_elements ?? [])
     .slice()
@@ -90,6 +103,8 @@ const QueryTab = ({
   const matchedElements: MatchedElement[] =
     queryResult?.matched_elements ?? [];
 
+  const isProcessing = loading || isProcessingSuggested;
+
   return (
     <div className="grid">
       <div className="card">
@@ -108,65 +123,53 @@ const QueryTab = ({
             ))}
           </select>
         </div>
-        <form className="grid" onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="question">Question</label>
-            <textarea
-              id="question"
-              placeholder="Example: What medications is the patient taking?"
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-              disabled={loading || !documentId}
-            />
-          </div>
-          <button className="btn" type="submit" disabled={loading || !question}>
-            {loading ? "Running Query…" : "Submit Query"}
-          </button>
-        </form>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+          <form className="grid" onSubmit={handleSubmit} style={{ margin: 0 }}>
+            <div className="form-group">
+              <label htmlFor="question">Question</label>
+              <textarea
+                id="question"
+                placeholder="Example: What medications is the patient taking?"
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                disabled={isProcessing || !documentId}
+                style={{ minHeight: "200px" }}
+              />
+            </div>
+            <button className="btn" type="submit" disabled={isProcessing || !question}>
+              {isProcessing ? "Running Query…" : "Submit Query"}
+            </button>
+          </form>
+
+          {precomputedAnswers && precomputedAnswers.questions.length > 0 && (
+            <div>
+              <h3 style={{ marginTop: 0, marginBottom: "1rem" }}>Suggested Questions</h3>
+              <div className="suggested-questions" style={{ marginBottom: "1rem" }}>
+                {precomputedAnswers.questions.map((q) => (
+                  <button
+                    key={q.question_id}
+                    type="button"
+                    className="btn btn--secondary suggested-question-btn"
+                    onClick={() => handleSuggestedQuestionClick(q.question)}
+                    disabled={isProcessing || !documentId}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      textAlign: "left",
+                      marginBottom: "0.5rem",
+                      padding: "0.75rem",
+                      whiteSpace: "normal",
+                      wordWrap: "break-word"
+                    }}
+                  >
+                    {q.question}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-
-      {precomputedAnswers && precomputedAnswers.questions.length > 0 && (
-        <div className="card">
-          <h3>Suggested Questions</h3>
-          <p className="muted" style={{ marginBottom: "1rem" }}>
-            Click on a question below to use it instantly (precomputed answers):
-          </p>
-          <div className="suggested-questions">
-            {precomputedAnswers.questions.map((q) => (
-              <button
-                key={q.question_id}
-                type="button"
-                className="btn btn--secondary suggested-question-btn"
-                onClick={() => handleSuggestedQuestionClick(q.question)}
-                disabled={loading || !documentId}
-                style={{
-                  display: "block",
-                  width: "100%",
-                  textAlign: "left",
-                  marginBottom: "0.5rem",
-                  padding: "0.75rem",
-                  whiteSpace: "normal",
-                  wordWrap: "break-word"
-                }}
-              >
-                {q.question}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {isPrecomputedAnswer && queryResult && (
-        <div className="card" style={{ background: "#f0f9ff", border: "1px solid #0ea5e9" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <span style={{ fontSize: "1.2rem" }}>✓</span>
-            <strong>Using Precomputed Answer</strong>
-          </div>
-          <p className="muted" style={{ marginTop: "0.5rem", marginBottom: 0 }}>
-            This answer was retrieved instantly from precomputed results.
-          </p>
-        </div>
-      )}
 
       {!documentId && (
         <div className="card">
@@ -175,7 +178,7 @@ const QueryTab = ({
       )}
 
       {queryResult && (
-        <div className="grid">
+        <div className="grid" ref={answerSectionRef}>
           <div className="card">
             <h3>Answer Summary</h3>
             <p>{queryResult.answer_summary || "No summary provided."}</p>
