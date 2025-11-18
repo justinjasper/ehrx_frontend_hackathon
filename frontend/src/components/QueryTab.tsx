@@ -15,6 +15,7 @@ interface QueryTabProps {
   onSelectDocument: (id: string) => void;
   precomputedAnswers: PrecomputedAnswer | null;
   isPrecomputedAnswer: boolean;
+  getDocumentLabel: (documentId: string) => string;
 }
 
 const QueryTab = ({
@@ -28,7 +29,8 @@ const QueryTab = ({
   documents,
   onSelectDocument,
   precomputedAnswers,
-  isPrecomputedAnswer
+  isPrecomputedAnswer,
+  getDocumentLabel
 }: QueryTabProps) => {
   const [question, setQuestion] = useState("");
   const [highlightedElementId, setHighlightedElementId] = useState<
@@ -127,7 +129,7 @@ const QueryTab = ({
             <option value="">Select a processed document</option>
             {documents.map((d) => (
               <option key={d.document_id} value={d.document_id}>
-                {d.document_id} ({d.total_pages} pages)
+                {getDocumentLabel(d.document_id)} ({d.total_pages} pages)
               </option>
             ))}
           </select>

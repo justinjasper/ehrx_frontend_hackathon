@@ -46,9 +46,26 @@ function App() {
   const samplesFetchedRef = useRef(false);
   const [processedDocumentIds, setProcessedDocumentIds] = useState<string[]>([]);
   const [precomputedAnswers, setPrecomputedAnswers] = useState<Map<string, PrecomputedAnswer>>(new Map());
+  const [documentDisplayNames, setDocumentDisplayNames] = useState<Record<string, string>>({});
   const [availablePrecomputedDocs, setAvailablePrecomputedDocs] = useState<string[]>([]);
   const [isPrecomputedAnswer, setIsPrecomputedAnswer] = useState(false);
   const [waitingForOntologyAfterUpload, setWaitingForOntologyAfterUpload] = useState(false);
+
+  const registerDocumentDisplayName = useCallback(
+    (id: string, label: string) => {
+      if (!label || !id) return;
+      setDocumentDisplayNames((prev) => {
+        if (prev[id] === label) return prev;
+        return { ...prev, [id]: label };
+      });
+    },
+    []
+  );
+
+  const getDocumentLabel = useCallback(
+    (documentId: string) => documentDisplayNames[documentId] ?? documentId,
+    [documentDisplayNames]
+  );
 
   const loadDocuments = useCallback(
     async (options?: { retries?: number; delayMs?: number }) => {
@@ -61,11 +78,6 @@ function App() {
           const response = await fetchDocuments();
           const docs = response.documents ?? [];
           setDocuments(docs);
-          setProcessedDocumentIds((prev) => {
-            const ids = new Set(prev);
-            docs.forEach((doc) => ids.add(doc.document_id));
-            return Array.from(ids);
-          });
           return true;
         } catch (err) {
           console.error("Failed to fetch documents (attempt %d)", attempt + 1, err);
@@ -223,7 +235,26 @@ function App() {
       const response = await uploadDocument(file, pageRange, documentType);
       await loadDocuments({ retries: 5, delayMs: 3000 });
       setSelectedDocument(response.document_id);
+      setProcessedDocumentIds((prev) =>
+        prev.includes(response.document_id) ? prev : [...prev, response.document_id]
+      );
+      setDocuments((prev) => {
+        if (prev.some((doc) => doc.document_id === response.document_id)) {
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            document_id: response.document_id,
+            total_pages: response.total_pages ?? 0
+          }
+        ];
+      });
       setCachedPdfFile(file);
+      registerDocumentDisplayName(
+        response.document_id,
+        file.name.replace(/\.pdf$/i, "")
+      );
       // Set flag to wait for ontology before switching tabs
       setWaitingForOntologyAfterUpload(true);
       setQueryResult(null);
@@ -263,6 +294,27 @@ function App() {
         prev.includes(response.document_id) ? prev : [...prev, response.document_id]
       );
       setSelectedDocument(response.document_id);
+      setDocuments((prev) => {
+        if (prev.some((doc) => doc.document_id === response.document_id)) {
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            document_id: response.document_id,
+            total_pages: response.total_pages ?? 0
+          }
+        ];
+      });
+      const sampleMeta = sampleDocuments.find(
+        (sample) => sample.filename === filename || sample.id === filename
+      );
+      if (sampleMeta) {
+        registerDocumentDisplayName(
+          response.document_id,
+          sampleMeta.display_name || sampleMeta.filename.replace(/\.pdf$/i, "")
+        );
+      }
 
       // Fetch and cache the sample PDF so overlays work in Query tab
       try {
@@ -390,8 +442,8 @@ function App() {
             onSelectDocument={(id) => setSelectedDocument(id)}
             ontology={ontology}
             loading={loadingOntology}
-            onRefresh={loadDocuments}
             onNavigateToQuery={() => setActiveTab("query")}
+            getDocumentLabel={getDocumentLabel}
           />
         )}
 
@@ -408,6 +460,7 @@ function App() {
             onSelectDocument={(id) => setSelectedDocument(id)}
             precomputedAnswers={precomputedAnswers.get(selectedDocument) || null}
             isPrecomputedAnswer={isPrecomputedAnswer}
+            getDocumentLabel={getDocumentLabel}
           />
         )}
       </section>

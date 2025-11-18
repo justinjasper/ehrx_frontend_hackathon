@@ -9,8 +9,8 @@ interface OntologyTabProps {
   onSelectDocument: (id: string) => void;
   ontology: OntologyDocument | null;
   loading: boolean;
-  onRefresh: () => void;
   onNavigateToQuery: () => void;
+  getDocumentLabel: (documentId: string) => string;
 }
 
 // Recursively process data to combine consecutive list_items
@@ -71,8 +71,8 @@ const OntologyTab = ({
   onSelectDocument,
   ontology,
   loading,
-  onRefresh,
-  onNavigateToQuery
+  onNavigateToQuery,
+  getDocumentLabel
 }: OntologyTabProps) => {
   const [exportOpen, setExportOpen] = useState(false);
   const suggestedName =
@@ -101,11 +101,11 @@ const OntologyTab = ({
           onChange={(event) => onSelectDocument(event.target.value)}
         >
           <option value="">Select a document</option>
-          {documents.map((doc) => (
-            <option key={doc.document_id} value={doc.document_id}>
-              {doc.document_id} ({doc.total_pages} pages)
-            </option>
-          ))}
+            {documents.map((doc) => (
+              <option key={doc.document_id} value={doc.document_id}>
+                {getDocumentLabel(doc.document_id)} ({doc.total_pages} pages)
+              </option>
+            ))}
         </select>
       </div>
 
@@ -115,6 +115,9 @@ const OntologyTab = ({
         <div className="grid">
           <div className="card">
             <h3>Document Summary</h3>
+            <p>
+              <strong>Document:</strong> {getDocumentLabel(ontology.document_id)}
+            </p>
             <p>
               <strong>ID:</strong> {ontology.document_id}
             </p>

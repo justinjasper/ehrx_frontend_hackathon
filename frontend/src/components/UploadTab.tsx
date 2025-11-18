@@ -263,7 +263,7 @@ const UploadTab = ({
               "Upload & Process"
             )}
           </button>
-          {submitAttempted && (
+          {submitAttempted && isProcessingUpload && (
             <p className="muted small-note small-note--center">
               Processing uploaded document… this may take a few minutes. Please keep this page open.
             </p>
