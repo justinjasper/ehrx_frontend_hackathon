@@ -55,10 +55,12 @@ const UploadTab = ({
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   const handleUploadSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!file) return;
+    setSubmitAttempted(true);
     onUpload(file, "all", uploadDocumentType);
   };
 
@@ -261,9 +263,11 @@ const UploadTab = ({
               "Upload & Process"
             )}
           </button>
-          <p className="muted small-note small-note--center">
-            Processing uploaded document… this may take a few minutes. Please keep this page open.
-          </p>
+          {submitAttempted && (
+            <p className="muted small-note small-note--center">
+              Processing uploaded document… this may take a few minutes. Please keep this page open.
+            </p>
+          )}
 
       {!file && (
         <div className="card">
