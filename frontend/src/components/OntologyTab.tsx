@@ -91,16 +91,6 @@ const OntologyTab = ({
           <h2>Ontology Viewer</h2>
           <p>Select a processed document to inspect its structured data.</p>
         </div>
-        {ontology && (
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button className="btn btn--secondary" onClick={onNavigateToQuery}>
-              Query the Document
-            </button>
-            <button className="btn" onClick={() => setExportOpen(true)}>
-              Export to EHR
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="form-group">
@@ -135,6 +125,14 @@ const OntologyTab = ({
               <strong>Sub-Documents:</strong>{" "}
               {ontology.sub_documents?.length ?? 0}
             </p>
+            <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end", marginTop: "1rem" }}>
+              <button className="btn btn--secondary" onClick={onNavigateToQuery}>
+                Query the Document
+              </button>
+              <button className="btn" onClick={() => setExportOpen(true)}>
+                Export to EHR
+              </button>
+            </div>
           </div>
 
           <div className="json-tree">
