@@ -280,6 +280,21 @@ textarea {
   animation: btn-spin 0.8s linear infinite;
 }
 
+ .processing-banner {
+   display: flex;
+   align-items: center;
+   gap: 0.5rem;
+ }
+ 
+ .processing-banner__spinner {
+   width: 1.25rem;
+   height: 1.25rem;
+   border-radius: 50%;
+   border: 2px solid rgba(15, 23, 42, 0.2);
+   border-top-color: #0f172a;
+   animation: btn-spin 0.8s linear infinite;
+ }
+
 @keyframes btn-spin {
   to {
     transform: rotate(360deg);

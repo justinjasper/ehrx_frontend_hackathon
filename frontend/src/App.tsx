@@ -135,6 +135,7 @@ function App() {
   useEffect(() => {
     if (!selectedDocument) {
       setOntology(null);
+      setWaitingForOntologyAfterUpload(false);
       return;
     }
 
@@ -364,6 +365,7 @@ function App() {
             onUpload={handleUpload}
             onProcessSample={handleProcessSample}
             uploading={uploading}
+            processingPending={waitingForOntologyAfterUpload}
             processingSampleId={processingSampleId}
             samples={sampleDocuments}
             samplesLoading={samplesLoading}

@@ -13,6 +13,7 @@ interface UploadTabProps {
     documentType: string
   ) => Promise<void>;
   uploading: boolean;
+  processingPending: boolean;
   processingSampleId: string | null;
   samples: SampleDocument[];
   samplesLoading: boolean;
@@ -37,6 +38,7 @@ const UploadTab = ({
   onUpload,
   onProcessSample,
   uploading,
+  processingPending,
   processingSampleId,
   samples,
   samplesLoading,
@@ -107,6 +109,13 @@ const UploadTab = ({
           Upload Sample Document
         </label>
       </div>
+
+      {processingPending && (
+        <div className="alert alert--info processing-banner">
+          <span className="processing-banner__spinner" aria-hidden="true" />
+          Processing uploaded document… this may take a few minutes. Please keep this page open.
+        </div>
+      )}
 
       {uploadMessage && (
         <div className="alert alert--error">{uploadMessage}</div>
